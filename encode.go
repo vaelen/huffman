@@ -5,40 +5,43 @@ import (
 	"bufio"
 	"io"
 	"math"
+	"strconv"
 	"container/heap"
+	"encoding/binary"
 )
 
-func Encode(input io.Reader, output io.Writer)  {
+const BlockSize = 65535
+
+func Encode(input io.Reader, output io.Writer) error {
 	b := make([]byte, BlockSize)
-	o := bufio.NewWriter(output)
-	defer o.Flush()
 	for {
 		n, err := input.Read(b)
 		if err != nil && err != io.EOF {
-			fmt.Println(err)
-			return
+			return err
 		}
 		if n > 0 {
 			fmt.Printf("Processing %d bytes\n", n)
-			EncodeChunk(b[:n], o)
+			e2 := EncodeChunk(b[:n], output)
+			if e2 != nil {
+				return e2
+			}
 		}
 		if err == io.EOF {
 			break
 		}
 	}
+	return nil
 }
 
-func EncodeChunk(input []byte, output io.ByteWriter) {
+func EncodeChunk(input []byte, output io.Writer) error {
+	o := bufio.NewWriter(output)
+	defer o.Flush()
 	tree := buildEncodingTree(input)
 	printTree("", tree)
 	
 	m := buildEncodingMap(make(map[byte]string), "", tree)
 
-	var maxSize float64
-	for _,v := range m {
-		maxSize = math.Max(float64(len(v)), maxSize)
-	}
-	writeChunkHeader(tree, uint16(maxSize), uint16(len(input)), output)
+	writeChunkHeader(tree, uint16(len(input)), output)
 	
 	buf := make([]byte,0)
 	var err error
@@ -48,60 +51,45 @@ func EncodeChunk(input []byte, output io.ByteWriter) {
 		for _, b := range bits {
 			buf = append(buf, b)
 		}
-		buf, err = encodeBytes(buf, output)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}
-	if len(buf) > 0 {
-		buf = padToByte(buf, '0')
-		encodeBytes(buf, output)
-	}
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-}
-
-func writeChunkHeader(tree *TreeNode, bitSize uint16, dataSize uint16, output io.ByteWriter) error {
-	sizeBits := fmt.Sprintf("%016b", bitSize)
-	header := []byte(sizeBits)
-	
-	header = buildHeader(header, tree, sizeString(bitSize))
-	dataSizeBits := fmt.Sprintf("%016b", dataSize);
-	for _,b := range dataSizeBits {
-		header = append(header, byte(b))
-	}
-	if len(header) > 0 {
-		header = padToByte(header, '1')
-		// fmt.Printf("Header Size: %d bits, %.2f bytes\n", len(header), float64(len(header))/8.0)
-		_, err := encodeBytes(header, output)
+		buf, err = encodeBytes(buf, o)
 		if err != nil {
 			return err
 		}
 	}
+	if len(buf) > 0 {
+		buf = padToByte(buf, '0')
+		encodeBytes(buf, o)
+	}
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func sizeString(size uint16) string {
-	return fmt.Sprintf("%%0%db", size)
+func writeChunkHeader(tree *TreeNode, dataSize uint16, output io.Writer) error {
+	header := buildHeader(make([]byte, 0), tree)
+	headerSizeBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(headerSizeBytes, uint16(len(header)))
+	dataSizeBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(dataSizeBytes, dataSize)
+	output.Write(headerSizeBytes)
+	output.Write(header)
+	output.Write(dataSizeBytes)
+	return nil
 }
 
-func buildHeader(header []byte, i *TreeNode, size string) []byte {
-	if i != nil {
-		if i.IsLeaf() {
-			bits := []byte(fmt.Sprintf(size, i.value))
-			for _,b := range bits {
-				header = append(header, b)
-			}
-		} else {
-			header = append(header, '0')
-			header = buildHeader(header, i.left, size)
-			header = buildHeader(header, i.right, size)
-		}
+func buildHeader(header []byte, i *TreeNode) []byte {
+	if i == nil {
+		return header
+	} else if i.IsLeaf() {
+		return append(header, 1, i.value)
+	} else {
+		header = append(header, 0)
+		header = buildHeader(header, i.left)
+		header = buildHeader(header, i.right)
+		return header
+		
 	}
-	return header
 }	
 
 func buildEncodingTree(input []byte) *TreeNode {
@@ -150,4 +138,29 @@ func buildEncodingMap(m map[byte]string, prefix string, i *TreeNode) map[byte]st
 		}
 	}
 	return m
+}
+
+func padToByte(buf []byte, pad byte) []byte {
+	if len(buf) > 0 {
+		for math.Mod(float64(len(buf)), 8.0) > 0.0 {
+			// Pad with zeros
+			// fmt.Printf("Buffer Size: %d bits, %.2f bytes\n", len(buf), float64(len(buf))/8.0)
+			buf = append(buf, pad)
+		}
+	}
+	// fmt.Printf("Buffer Size: %d bits, %.2f bytes\n", len(buf), float64(len(buf))/8.0)
+	return buf
+}
+
+func encodeBytes(bits []byte, output io.ByteWriter) ([]byte, error) {
+	for len(bits) > 7 {
+		s := string(bits[:8])
+		bits = bits[7:]
+		b, err := strconv.ParseUint(s, 2, 8)
+		if err != nil {
+			return bits, err
+		}
+		output.WriteByte(byte(b))
+	}
+	return bits, nil
 }
