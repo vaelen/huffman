@@ -14,13 +14,15 @@ const BlockSize = 65535
 
 func Encode(input io.Reader, output io.Writer) error {
 	b := make([]byte, BlockSize)
+	defer fmt.Println()
 	for {
 		n, err := input.Read(b)
 		if err != nil && err != io.EOF {
 			return err
 		}
 		if n > 0 {
-			fmt.Printf("Processing %d bytes\n", n)
+			// fmt.Printf("Processing %d bytes\n", n)
+			fmt.Print("#")
 			e2 := EncodeChunk(b[:n], output)
 			if e2 != nil {
 				return e2
@@ -71,8 +73,8 @@ func writeChunkHeader(tree *TreeNode, dataSize uint16, output io.Writer) error {
 	binary.BigEndian.PutUint16(headerSizeBytes, uint16(len(header)))
 	dataSizeBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(dataSizeBytes, dataSize)
-	fmt.Printf("Header Size: %d bytes\n", len(header))
-	fmt.Printf("Data Size: %d bytes\n", dataSize)
+	// fmt.Printf("Header Size: %d bytes\n", len(header))
+	// fmt.Printf("Data Size: %d bytes\n", dataSize)
 	output.Write(headerSizeBytes)
 	output.Write(header)
 	output.Write(dataSizeBytes)

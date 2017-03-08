@@ -12,6 +12,7 @@ func Decode(input io.Reader, output io.Writer) error {
 	i := bufio.NewReader(input)
 	o := bufio.NewWriter(output)
 	defer o.Flush()
+	defer fmt.Println()
 	for {
 		tree, dataSize, err := readChunkHeader(i)
 		if err == io.EOF {
@@ -20,7 +21,8 @@ func Decode(input io.Reader, output io.Writer) error {
 			return err
 		}
 
-		fmt.Printf("Processing %d original bytes\n", dataSize)
+		// fmt.Printf("Processing %d original bytes\n", dataSize)
+		fmt.Print("#")
 		err = DecodeChunk(i, o, tree, dataSize)
 		if err == io.EOF {
 			break
@@ -90,7 +92,7 @@ func readChunkHeader(input io.Reader) (*TreeNode, uint16, error) {
 		return nil, 0, err
 	}
 	headerSize := binary.BigEndian.Uint16(headerSizeBytes)
-	fmt.Printf("Header Size: %d bytes\n", headerSize)
+	// fmt.Printf("Header Size: %d bytes\n", headerSize)
 	
 	var tree *TreeNode
 	var in io.ByteReader
@@ -102,7 +104,7 @@ func readChunkHeader(input io.Reader) (*TreeNode, uint16, error) {
 	if err != nil && err != io.EOF {
 		return nil, 0, err
 	}
-	//printTree("", tree)
+	// printTree("", tree)
 	
 	dataSizeBytes := make([]byte, 2)
 	n, err = input.Read(dataSizeBytes)
@@ -112,7 +114,7 @@ func readChunkHeader(input io.Reader) (*TreeNode, uint16, error) {
 		return nil, 0, err
 	}
 	dataSize := binary.BigEndian.Uint16(dataSizeBytes)
-	fmt.Printf("Data Size: %d bytes\n", dataSize)
+	// fmt.Printf("Data Size: %d bytes\n", dataSize)
 
 	return tree, dataSize, nil
 }
