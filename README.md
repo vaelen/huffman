@@ -2,6 +2,8 @@
 
 This is a simple Huffman encoder/decoder written in Golang.
 
+It includes a standalone executable, but it can also be used as a library.
+
 Copyright 2017, Andrew Young <andrew@vaelen.org>
 
 This program is free software: you can redistribute it and/or modify
