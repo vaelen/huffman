@@ -37,7 +37,6 @@ func EncodeChunk(input []byte, output io.Writer) error {
 	o := bufio.NewWriter(output)
 	defer o.Flush()
 	tree := buildEncodingTree(input)
-	printTree("", tree)
 	
 	m := buildEncodingMap(make(map[byte]string), "", tree)
 
@@ -72,6 +71,8 @@ func writeChunkHeader(tree *TreeNode, dataSize uint16, output io.Writer) error {
 	binary.BigEndian.PutUint16(headerSizeBytes, uint16(len(header)))
 	dataSizeBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(dataSizeBytes, dataSize)
+	fmt.Printf("Header Size: %d bytes\n", len(header))
+	fmt.Printf("Data Size: %d bytes\n", dataSize)
 	output.Write(headerSizeBytes)
 	output.Write(header)
 	output.Write(dataSizeBytes)
@@ -144,18 +145,16 @@ func padToByte(buf []byte, pad byte) []byte {
 	if len(buf) > 0 {
 		for math.Mod(float64(len(buf)), 8.0) > 0.0 {
 			// Pad with zeros
-			// fmt.Printf("Buffer Size: %d bits, %.2f bytes\n", len(buf), float64(len(buf))/8.0)
 			buf = append(buf, pad)
 		}
 	}
-	// fmt.Printf("Buffer Size: %d bits, %.2f bytes\n", len(buf), float64(len(buf))/8.0)
 	return buf
 }
 
 func encodeBytes(bits []byte, output io.ByteWriter) ([]byte, error) {
 	for len(bits) > 7 {
 		s := string(bits[:8])
-		bits = bits[7:]
+		bits = bits[8:]
 		b, err := strconv.ParseUint(s, 2, 8)
 		if err != nil {
 			return bits, err

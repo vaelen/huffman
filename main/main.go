@@ -23,6 +23,7 @@ func OpenFiles(infile string, outfile string) (*os.File, *os.File, error) {
 }
 
 func Encode(infile string, outfile string) error {
+	fmt.Printf("Encoding: %s -> %s\n", infile, outfile)
 	input, output, err := OpenFiles(infile, outfile)
 	defer input.Close()
 	defer output.Close()
@@ -33,6 +34,7 @@ func Encode(infile string, outfile string) error {
 }
 
 func Decode(infile string, outfile string) error {
+	fmt.Printf("Decoding: %s -> %s\n", infile, outfile)
 	input, output, err := OpenFiles(infile, outfile)
 	defer input.Close()
 	defer output.Close()
@@ -48,7 +50,9 @@ func main() {
 	outfile := "lorem.bin"
 	outfile2 := "lorem.out"
 
-	err := Encode(infile, outfile)
+	var err error
+
+	err = Encode(infile, outfile)
 	if err != nil {
 		fmt.Println(err)
 		return
